@@ -19,6 +19,9 @@ function test_basic() {
   segfault 'string literal is not const' "int main(void) {char *s = \"foo\"; s[0] = 'x'; return 0;} //-WCC"
   try_direct 'retunr void' 169 'int G; void f(int x) {return (void)(G = x);} int main(void) {f(169); return G;} //-WNOERR'
 
+  try_direct 'extern undef enum' 99 'extern enum Foo x; int main(){ return x; } enum Foo x = 99;'
+  try_direct 'enum only' 55 'enum Foo; int sub(enum Foo); enum Foo {BAR, BAZ}; int main(){ return sub(BAR); } int sub(enum Foo foo) { return foo + 55; } '
+
   end_test_suite
 }
 
@@ -120,7 +123,7 @@ function test_error() {
   compile_error '*num' 'int main(){ *123; }'
   compile_error '&num' 'int main(){ &123; }'
   compile_error '&enum' 'enum Num { Zero }; int main(){ void *p = &Zero; (void)p; }'
-  compile_error 'scoped enum name' 'int sub(){enum Num{Zero}; return Zero;} int main(){enum Num n = 0; return n;}'
+  compile_error 'scoped enum name' 'int sub(){enum Num{Zero}; return Zero;} int main(){enum Num n = Zero; return n;}'
   compile_error 'scoped enum value' 'int sub(){enum{Zero}; return Zero;} int main(){return Zero;}'
   compile_error 'assign to non-lhs' 'int main(){ int x; x + 1 = 3; }'
   compile_error 'assign to array' 'int main(){ int a[3], b[3]; a = b; (void)a; }'
