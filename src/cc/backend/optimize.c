@@ -221,8 +221,6 @@ static int replace_register_in_bb(BB *bb, VReg *target, VReg *alternation, int s
   int first = INT_MAX;
   for (int iir = start; iir < bb->irs->len; ++iir, ++ip) {
     IR *ir = bb->irs->data[iir];
-    if (ir->dst == target && ir->opr1 != alternation)
-      break;
 
     if (ir->opr1 == target) {
       ir->opr1 = alternation;
@@ -244,6 +242,9 @@ static int replace_register_in_bb(BB *bb, VReg *target, VReg *alternation, int s
         }
       }
     }
+
+    if (ir->dst == alternation || (ir->dst == target && ir->opr1 != alternation))
+      break;
   }
   return first;
 }
@@ -580,6 +581,22 @@ static void peephole(RegAlloc *ra, BB *bb) {
     case IR_MUL:
     case IR_DIV:
       i = muldiv_to_shift(ra, bb, i);
+      break;
+    case IR_MOV:
+      if (!(ir->dst->flag & VRF_FORCEMEMORY) && !(ir->opr1->flag & VRF_FORCEMEMORY)) {
+        int replaced = replace_register_in_bb(bb, ir->dst, ir->opr1, i + 1, i + 1);
+        if (replaced != INT_MAX) {
+          for (int iir = replaced; iir < bb->irs->len; ++iir) {
+            IR *ir = bb->irs->data[iir];
+            if (constant_folding(ra, ir)) {
+              if (ir->kind == IR_JMP && ir->jmp.cond == COND_NONE) {
+                vec_remove_at(bb->irs, iir);
+                --iir;
+              }
+            }
+          }
+        }
+      }
       break;
     default:
       break;
